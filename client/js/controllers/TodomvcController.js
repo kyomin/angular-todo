@@ -35,6 +35,7 @@ app.controller('TodomvcCtrl', function($scope, todomvcStorage) {
     // Delete Function
     $scope.remove = function(id) {
         // User 단에서 삭제를 위해 클릭한 todo가 유효하지 않은 경우!
+        console.log('id : ', id);
         if(!id) return;
 
         // Delete 서비스 호출!
