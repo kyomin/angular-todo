@@ -2,62 +2,70 @@
     factory() 함수로 todomvcStorage라는 이름의 앵귤러 서비스를 정의했다.
     서비스는 싱글톤이라 todomvc 모듈 내에서는 하나의 객체만 생성된다.
 
-    임시로 간단히 정의했지만, todos가 실제로 데이터베이스 역할을 하고,
-    get / post / delete / update 함수를 통해 데이터 접근이 이뤄진다.
+    앵귤러 서비스는 백엔드 api와 http 통신하면서 데이터를 주고 받는 역할을 한다.
+    그리고 컨트롤러에서는 이 서비스를 이용해 데이터를 가져와 템플릿에 뿌려주는 역할을 한다.
+
+    다음의 계층 구조를 가진다.
+    데이터베이스 -> 백엔드 api -> 앵귤러 서비스 -> 앵귤러 컨트롤러 -> 앵귤러 템플릿(뷰 단)
 */
-app.factory('todomvcStorage', function() {
+app.factory('todomvcStorage', function($http) {
     const storage = {
-        todos: [
-            {
-                id: 1,
-                title: 'AngularJS 공부하기',
-                completed: false
-            }, 
-            {
-                id: 2,
-                title: 'ROS 개념잡기',
-                completed: true
-            },
-            {
-                id: 3,
-                title: 'NodeJS 공부하기',
-                completed: true
-            }
-        ],
+        todos: [],
+
+        /* 
+            자바스크립트에서는 XMLHttpRequest 객체를 이용해 http 요청을 한다.
+            제이쿼리는 $ajax 함수를 이용한다.
+            마찬가지로 앵귤러도 ajax를 위한 서비스를 제공하는데,
+            $http와 $resource가 있다.
+
+            현 앵귤러 연습용 저장소에서는 기본적인 $http를 이용해 백엔드 api와 통신한다.
+        */
 
         // Read
-        get: function() {
-            return storage.todos;
+        get: function(callback) {
+            $http.get('/api/todos')
+            .then((res) => {
+                callback(null, angular.copy(res.data.todos, storage.todos));
+            })
+            .catch((err) => {
+                console.error(err);
+                callback(err);
+            });
         },
 
+        /* 
+            $http는 메소드에 따라 get(), post(), put(), delete() 함수를 제공한다.
+            첫 번째 파라미터는 요청 url을 입력한다.
+            post와 put 함수는 두 번째 파라미터로 요청 바디를 추가할 수 있다.
+        */
+
         // Create
-        post: function(todoTitle) {
-            /* 
-                첫 데이터라면 id는 1부터 시작.
-                아니라면, 테이블의 맨 마지막에 존재하는 id에 1 증가 시킨 값을 지정한다.
-            */
-            const newId = !storage.todos.length ? 1 : storage.todos[storage.todos.length - 1].id + 1;
-    
-            const newTodo = {
-                id: newId,
-                title: todoTitle,
-                completed: false
-            };
-    
-            storage.todos.push(newTodo);
+        post: function(todoTitle, callback) {
+            $http.post('/api/todo', { title: todoTitle })
+            .then((res) => {
+                storage.todos.push(res.data.newTodo);
+                callback(null, storage.todos);
+            })
+            .catch((err) => {
+                console.error(err);
+                callback(err);
+            });
         },
 
         // Delete
-        delete: function(id) {
-            // 배열에서 제거할 대상 인덱스를 검색
-            var deletedTodoIdx = storage.todos.findIndex(function(todo) {
-                return todo.id === id;
+        delete: function(id, callback) {
+            $http.delete(`/api/todo/${id}`)
+            .then((res) => {
+                const deletedTodoIdx = res.data.deletedTodoIdx;
+
+                // 현 스토리지 배열에서 제거
+                storage.todos.splice(deletedTodoIdx, 1);
+                callback(null, storage.todos);
+            })
+            .catch((err) => {
+                console.error(err);
+                callback(err);
             });
-    
-            if(deletedTodoIdx === -1) return;
-    
-            // 배열에서 제거
-            storage.todos.splice(deletedTodoIdx, 1);
         },
 
         // 완료 체크된 모든 todo 제거
